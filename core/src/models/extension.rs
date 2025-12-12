@@ -3,21 +3,8 @@ use crate::models::task::*;
 use serde_derive::{Deserialize, Serialize};
 
 /// Represents the definition of a an extension
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum ExtensionDefinition {
-    Named(std::collections::HashMap<String, ExtensionFields>),
-}
-
-impl Default for ExtensionDefinition {
-    fn default() -> Self {
-        ExtensionDefinition::Named(std::collections::HashMap::new())
-    }
-}
-
-/// Represents the fields of an extension definition
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ExtensionFields {
+pub struct ExtensionDefinition {
     /// Gets/sets the type of task to extend
     #[serde(rename = "extend")]
     pub extend: String,

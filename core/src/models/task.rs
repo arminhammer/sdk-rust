@@ -1,13 +1,13 @@
-use std::collections::HashMap;
-use serde_derive::{Deserialize, Serialize};
-use serde_json::Value;
 use crate::models::duration::*;
-use crate::models::event::*;
 use crate::models::error::*;
-use crate::models::map::*;
+use crate::models::event::*;
 use crate::models::input::*;
+use crate::models::map::*;
 use crate::models::resource::*;
 use crate::models::retry::*;
+use serde_derive::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
 
 use super::output::OutputDataModelDefinition;
 use super::timeout::OneOfTimeoutDefinitionOrReference;
@@ -57,7 +57,7 @@ impl ProcessType {
 /// Represents a value that can be any of the supported task definitions
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(untagged)]
-pub enum TaskDefinition{
+pub enum TaskDefinition {
     /// Variant holding the definition of a 'call' task
     Call(CallTaskDefinition),
     /// Variant holding the definition of a 'do' task
@@ -81,7 +81,7 @@ pub enum TaskDefinition{
     /// Variant holding the definition of a 'try' task
     Try(TryTaskDefinition),
     /// Variant holding the definition of a 'wait' task
-    Wait(WaitTaskDefinition)
+    Wait(WaitTaskDefinition),
 }
 
 // Custom deserializer to handle For vs Do ambiguity
@@ -179,8 +179,7 @@ pub trait TaskDefinitionBase {
 
 /// Holds the fields common to all tasks
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TaskDefinitionFields{
-
+pub struct TaskDefinitionFields {
     /// Gets/sets a runtime expression, if any, used to determine whether or not the execute the task in the current context
     #[serde(rename = "if", skip_serializing_if = "Option::is_none")]
     pub if_: Option<String>,
@@ -207,35 +206,31 @@ pub struct TaskDefinitionFields{
 
     /// Gets/sets a key/value mapping of additional information associated with the task
     #[serde(rename = "metadata", skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<HashMap<String, Value>>
-
+    pub metadata: Option<HashMap<String, Value>>,
 }
-impl Default for TaskDefinitionFields{
+impl Default for TaskDefinitionFields {
     fn default() -> Self {
         TaskDefinitionFields::new()
     }
 }
-impl TaskDefinitionFields{
-
+impl TaskDefinitionFields {
     /// Initializes a new TaskDefinitionFields
-    pub fn new() -> Self{
-        Self { 
-            if_: None, 
-            input: None, 
-            output: None, 
-            export: None, 
-            timeout: None, 
-            then: None, 
-            metadata: None 
+    pub fn new() -> Self {
+        Self {
+            if_: None,
+            input: None,
+            output: None,
+            export: None,
+            timeout: None,
+            then: None,
+            metadata: None,
         }
     }
-
 }
 
 /// Represents the definition of a task used to call a predefined function
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CallTaskDefinition{
-
+pub struct CallTaskDefinition {
     /// Gets/sets the reference to the function to call
     #[serde(rename = "call")]
     pub call: String,
@@ -250,40 +245,35 @@ pub struct CallTaskDefinition{
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for CallTaskDefinition {
     fn task_type(&self) -> &str {
         TaskType::CALL
     }
 }
-impl  CallTaskDefinition {
-    
+impl CallTaskDefinition {
     /// Initializes a new CalltaskDefinition
-    pub fn new(call: &str, with: Option<HashMap<String, Value>>, await_: Option<bool>) -> Self{
-        Self { 
-            call: call.to_string(), 
-            with, 
+    pub fn new(call: &str, with: Option<HashMap<String, Value>>, await_: Option<bool>) -> Self {
+        Self {
+            call: call.to_string(),
+            with,
             await_,
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
-
 }
 
 /// Represents the configuration of a task that is composed of multiple subtasks to run sequentially
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DoTaskDefinition{
-
+pub struct DoTaskDefinition {
     /// Gets/sets a name/definition mapping of the subtasks to perform sequentially
     #[serde(rename = "do")]
     pub do_: Map<String, TaskDefinition>,
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for DoTaskDefinition {
     fn task_type(&self) -> &str {
@@ -291,21 +281,18 @@ impl TaskDefinitionBase for DoTaskDefinition {
     }
 }
 impl DoTaskDefinition {
-    
     /// Initializes a new CalltaskDefinition
-    pub fn new(do_: Map<String, TaskDefinition>) -> Self{
-        Self { 
+    pub fn new(do_: Map<String, TaskDefinition>) -> Self {
+        Self {
             do_,
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
-
 }
 
 /// Represents the configuration of a task used to emit an event
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EmitTaskDefinition{
-
+pub struct EmitTaskDefinition {
     /// Gets/sets the configuration of an event's emission
     #[serde(rename = "emit")]
     pub emit: EventEmissionDefinition,
@@ -313,7 +300,6 @@ pub struct EmitTaskDefinition{
     /// Gets/sets the task's common fields
     #[serde(flatten)]
     pub common: TaskDefinitionFields,
-
 }
 impl TaskDefinitionBase for EmitTaskDefinition {
     fn task_type(&self) -> &str {
@@ -322,28 +308,24 @@ impl TaskDefinitionBase for EmitTaskDefinition {
 }
 impl EmitTaskDefinition {
     /// Initializes a new EmitTaskDefinition
-    pub fn new(emit: EventEmissionDefinition) -> Self{
-        Self { 
+    pub fn new(emit: EventEmissionDefinition) -> Self {
+        Self {
             emit,
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
 }
 
 /// Represents the configuration of an event's emission
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct EventEmissionDefinition{
-
+pub struct EventEmissionDefinition {
     /// Gets/sets the definition of the event to emit
     #[serde(rename = "event")]
-    pub event: EventDefinition
-
+    pub event: EventDefinition,
 }
 impl EventEmissionDefinition {
-    pub fn new(event: EventDefinition) -> Self{
-        Self { 
-            event 
-        }
+    pub fn new(event: EventDefinition) -> Self {
+        Self { event }
     }
 }
 
@@ -351,8 +333,7 @@ impl EventEmissionDefinition {
 /// Represents the definition of a task that executes a set of subtasks iteratively for each element in a collection
 /// </summary>
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ForTaskDefinition{
-
+pub struct ForTaskDefinition {
     /// Gets/sets the definition of the loop that iterates over a range of values
     #[serde(rename = "for")]
     pub for_: ForLoopDefinition,
@@ -367,8 +348,7 @@ pub struct ForTaskDefinition{
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for ForTaskDefinition {
     fn task_type(&self) -> &str {
@@ -377,20 +357,23 @@ impl TaskDefinitionBase for ForTaskDefinition {
 }
 impl ForTaskDefinition {
     /// Initializes a new ForTaskDefinition
-    pub fn new(for_: ForLoopDefinition, do_: Map<String, TaskDefinition>, while_: Option<String>) -> Self{
-        Self { 
-            for_, 
-            while_, 
+    pub fn new(
+        for_: ForLoopDefinition,
+        do_: Map<String, TaskDefinition>,
+        while_: Option<String>,
+    ) -> Self {
+        Self {
+            for_,
+            while_,
             do_,
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
 }
 
 /// Represents the definition of a loop that iterates over a range of values
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ForLoopDefinition{
-
+pub struct ForLoopDefinition {
     /// Gets/sets the name of the variable that represents each element in the collection during iteration
     #[serde(rename = "each")]
     pub each: String,
@@ -406,31 +389,33 @@ pub struct ForLoopDefinition{
     /// Gets/sets the definition of the data, if any, to pass to iterations to run
     #[serde(rename = "input", skip_serializing_if = "Option::is_none")]
     pub input: Option<InputDataModelDefinition>,
-
 }
 impl ForLoopDefinition {
-    pub fn new(each: &str, in_: &str, at: Option<String>, input: Option<InputDataModelDefinition>) -> Self{
-        Self { 
-            each: each.to_string(), 
-            in_: in_.to_string(), 
-            at, 
-            input 
+    pub fn new(
+        each: &str,
+        in_: &str,
+        at: Option<String>,
+        input: Option<InputDataModelDefinition>,
+    ) -> Self {
+        Self {
+            each: each.to_string(),
+            in_: in_.to_string(),
+            at,
+            input,
         }
     }
 }
 
 /// Represents the configuration of a task that is composed of multiple subtasks to run concurrently
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ForkTaskDefinition{
-
+pub struct ForkTaskDefinition {
     /// Gets/sets the configuration of the branches to perform concurrently
     #[serde(rename = "fork")]
     pub fork: BranchingDefinition,
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for ForkTaskDefinition {
     fn task_type(&self) -> &str {
@@ -439,40 +424,34 @@ impl TaskDefinitionBase for ForkTaskDefinition {
 }
 impl ForkTaskDefinition {
     /// Initializes a new ForkTaskDefinition
-    pub fn new(fork: BranchingDefinition) -> Self{
-        Self { 
+    pub fn new(fork: BranchingDefinition) -> Self {
+        Self {
             fork,
-            common: TaskDefinitionFields::new()
-         }
+            common: TaskDefinitionFields::new(),
+        }
     }
 }
 
 /// Represents an object used to configure branches to perform concurrently
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct BranchingDefinition{
-
+pub struct BranchingDefinition {
     /// Gets/sets a name/definition mapping of the subtasks to perform concurrently
     #[serde(rename = "branches")]
     pub branches: Map<String, TaskDefinition>,
 
     /// Gets/sets a boolean indicating whether or not the branches should compete each other. If `true` and if a branch completes, it will cancel all other branches then it will return its output as the task's output
     #[serde(rename = "compete")]
-    pub compete: bool
-
+    pub compete: bool,
 }
-impl BranchingDefinition{
-    pub fn new(branches:Map<String, TaskDefinition>, compete: bool) -> Self{
-        Self { 
-            branches, 
-            compete 
-        }
+impl BranchingDefinition {
+    pub fn new(branches: Map<String, TaskDefinition>, compete: bool) -> Self {
+        Self { branches, compete }
     }
 }
 
 /// Represents the configuration of a task used to listen to specific events
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ListenTaskDefinition{
-
+pub struct ListenTaskDefinition {
     /// Gets/sets the configuration of the listener to use
     #[serde(rename = "listen")]
     pub listen: ListenerDefinition,
@@ -483,8 +462,7 @@ pub struct ListenTaskDefinition{
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for ListenTaskDefinition {
     fn task_type(&self) -> &str {
@@ -493,49 +471,42 @@ impl TaskDefinitionBase for ListenTaskDefinition {
 }
 impl ListenTaskDefinition {
     /// Initializes a new ListenTaskDefinition
-    pub fn new(listen: ListenerDefinition) -> Self{
-        Self { 
+    pub fn new(listen: ListenerDefinition) -> Self {
+        Self {
             listen,
             foreach: None,
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
 }
 
 /// Represents the configuration of an event listener
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ListenerDefinition{
-
+pub struct ListenerDefinition {
     /// Gets/sets the listener's target
     #[serde(rename = "to")]
     pub to: EventConsumptionStrategyDefinition,
 
     /// Gets/sets a string that specifies how events are read during the listen operation
     #[serde(rename = "read")]
-    pub read: Option<String>
-
+    pub read: Option<String>,
 }
 impl ListenerDefinition {
-    pub fn new(to: EventConsumptionStrategyDefinition) -> Self{
-        Self{
-            to,
-            read: None
-        }
+    pub fn new(to: EventConsumptionStrategyDefinition) -> Self {
+        Self { to, read: None }
     }
 }
 
 /// Represents the configuration of a task used to listen to specific events
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RaiseTaskDefinition{
-
+pub struct RaiseTaskDefinition {
     /// Gets/sets the definition of the error to raise
     #[serde(rename = "raise")]
     pub raise: RaiseErrorDefinition,
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for RaiseTaskDefinition {
     fn task_type(&self) -> &str {
@@ -544,44 +515,38 @@ impl TaskDefinitionBase for RaiseTaskDefinition {
 }
 impl RaiseTaskDefinition {
     /// Initializes a new RaiseTaskDefinition
-    pub fn new(raise: RaiseErrorDefinition) -> Self{
-        Self{
+    pub fn new(raise: RaiseErrorDefinition) -> Self {
+        Self {
             raise,
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
 }
 
 /// Represents the definition of the error to raise
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RaiseErrorDefinition{
-
+pub struct RaiseErrorDefinition {
     /// Gets/sets the error to raise
     #[serde(rename = "error")]
-    pub error: OneOfErrorDefinitionOrReference
-
+    pub error: OneOfErrorDefinitionOrReference,
 }
-impl RaiseErrorDefinition{
-
+impl RaiseErrorDefinition {
     /// Initializes a new RaiseErrorDefinition
-    pub fn new(error: OneOfErrorDefinitionOrReference) -> Self{
+    pub fn new(error: OneOfErrorDefinitionOrReference) -> Self {
         Self { error }
     }
-
 }
 
 /// Represents the configuration of a task used to run a given process
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RunTaskDefinition{
-
+pub struct RunTaskDefinition {
     /// Gets/sets the configuration of the process to execute
     #[serde(rename = "run")]
     pub run: ProcessTypeDefinition,
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for RunTaskDefinition {
     fn task_type(&self) -> &str {
@@ -590,18 +555,17 @@ impl TaskDefinitionBase for RunTaskDefinition {
 }
 impl RunTaskDefinition {
     /// Initializes a new RunTaskDefinition
-    pub fn new(run: ProcessTypeDefinition) -> Self{
-        Self { 
+    pub fn new(run: ProcessTypeDefinition) -> Self {
+        Self {
             run,
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
 }
 
 /// Represents the configuration of a process execution
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ProcessTypeDefinition{
-
+pub struct ProcessTypeDefinition {
     /// Gets/sets the configuration of the container to run
     #[serde(rename = "container", skip_serializing_if = "Option::is_none")]
     pub container: Option<ContainerProcessDefinition>,
@@ -620,77 +584,70 @@ pub struct ProcessTypeDefinition{
 
     /// Gets/sets a boolean indicating whether or not to await the process completion before continuing. Defaults to 'true'
     #[serde(rename = "await", skip_serializing_if = "Option::is_none")]
-    pub await_: Option<bool>
-
+    pub await_: Option<bool>,
 }
 impl ProcessTypeDefinition {
-
     /// Creates a new container process
-    pub fn using_container(container: ContainerProcessDefinition, await_: Option<bool>) -> Self{
-        Self { 
+    pub fn using_container(container: ContainerProcessDefinition, await_: Option<bool>) -> Self {
+        Self {
             container: Some(container),
             await_,
             shell: None,
             script: None,
-            workflow: None
+            workflow: None,
         }
     }
 
     /// Creates a new script process
-    pub fn using_script(script: ScriptProcessDefinition, await_: Option<bool>) -> Self{
-        Self { 
+    pub fn using_script(script: ScriptProcessDefinition, await_: Option<bool>) -> Self {
+        Self {
             script: Some(script),
             await_,
             container: None,
             shell: None,
-            workflow: None
+            workflow: None,
         }
     }
 
     /// Creates a new shell process
-    pub fn using_shell(shell: ShellProcessDefinition, await_: Option<bool>) -> Self{
-        Self { 
+    pub fn using_shell(shell: ShellProcessDefinition, await_: Option<bool>) -> Self {
+        Self {
             shell: Some(shell),
             await_,
             container: None,
             script: None,
-            workflow: None
+            workflow: None,
         }
     }
 
     /// Creates a new workflow process
-    pub fn using_workflow(workflow: WorkflowProcessDefinition, await_: Option<bool>) -> Self{
-        Self { 
+    pub fn using_workflow(workflow: WorkflowProcessDefinition, await_: Option<bool>) -> Self {
+        Self {
             workflow: Some(workflow),
             await_,
             container: None,
             shell: None,
-            script: None
-        }
-    }
-    
-    /// Gets the type of the defined process
-    pub fn get_process_type(&self) -> &str{
-        if self.container.is_some(){
-            ProcessType::CONTAINER
-        }
-        else if self.script.is_some(){
-            ProcessType::SCRIPT
-        }
-        else if self.shell.is_some(){
-            ProcessType::SHELL
-        }
-        else{
-            ProcessType::WORKFLOW
+            script: None,
         }
     }
 
+    /// Gets the type of the defined process
+    pub fn get_process_type(&self) -> &str {
+        if self.container.is_some() {
+            ProcessType::CONTAINER
+        } else if self.script.is_some() {
+            ProcessType::SCRIPT
+        } else if self.shell.is_some() {
+            ProcessType::SHELL
+        } else {
+            ProcessType::WORKFLOW
+        }
+    }
 }
 
 /// Represents the configuration of a container process
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ContainerProcessDefinition{
-
+pub struct ContainerProcessDefinition {
     /// Gets/sets the name of the container image to run
     #[serde(rename = "image")]
     pub image: String,
@@ -698,6 +655,12 @@ pub struct ContainerProcessDefinition{
     /// Gets/sets the name of the container to run
     #[serde(rename = "name")]
     pub name: Option<String>,
+
+    #[serde(rename = "arguments", skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<Vec<String>>,
+
+    #[serde(rename = "stdin", skip_serializing_if = "Option::is_none")]
+    pub stdin: Option<String>,
 
     /// Gets/sets the command, if any, to execute on the container
     #[serde(rename = "command", skip_serializing_if = "Option::is_none")]
@@ -714,25 +677,34 @@ pub struct ContainerProcessDefinition{
     /// Gets/sets a key/value mapping of the environment variables, if any, to use when running the configured process
     #[serde(rename = "environment", skip_serializing_if = "Option::is_none")]
     pub environment: Option<HashMap<String, String>>,
-
 }
 impl ContainerProcessDefinition {
-    pub fn new(image: &str, name: Option<String>, command: Option<String>, ports: Option<HashMap<u16, u16>>, volumes: Option<HashMap<String, String>>, environment: Option<HashMap<String, String>>) -> Self{
-        Self { 
-            image: image.to_string(), 
+    pub fn new(
+        image: &str,
+        name: Option<String>,
+        arguments: Option<Vec<String>>,
+        stdin: Option<String>,
+        command: Option<String>,
+        ports: Option<HashMap<u16, u16>>,
+        volumes: Option<HashMap<String, String>>,
+        environment: Option<HashMap<String, String>>,
+    ) -> Self {
+        Self {
+            image: image.to_string(),
             name,
-            command, 
-            ports, 
-            volumes, 
-            environment
+            arguments,
+            stdin,
+            command,
+            ports,
+            volumes,
+            environment,
         }
     }
 }
 
 /// Represents the definition of a script evaluation process
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ScriptProcessDefinition{
-
+pub struct ScriptProcessDefinition {
     /// Gets/sets the language of the script to run
     #[serde(rename = "language")]
     pub language: String,
@@ -756,39 +728,48 @@ pub struct ScriptProcessDefinition{
     /// Gets/sets a key/value mapping of the environment variables, if any, to use when running the configured process
     #[serde(rename = "environment", skip_serializing_if = "Option::is_none")]
     pub environment: Option<HashMap<String, String>>,
-
 }
 impl ScriptProcessDefinition {
-
     /// Initializes a new script from code
-    pub fn from_code(language: &str, code: String, stdin: Option<String>, arguments: Option<Vec<String>>, environment: Option<HashMap<String, String>>) -> Self{
+    pub fn from_code(
+        language: &str,
+        code: String,
+        stdin: Option<String>,
+        arguments: Option<Vec<String>>,
+        environment: Option<HashMap<String, String>>,
+    ) -> Self {
         Self {
             language: language.to_string(),
             code: Some(code),
             source: None,
             stdin,
             arguments,
-            environment
-         }
+            environment,
+        }
     }
 
     /// Initializes a new script from an external resource
-    pub fn from_source(language: &str, source: ExternalResourceDefinition, stdin: Option<String>, arguments: Option<Vec<String>>, environment: Option<HashMap<String, String>>) -> Self{
+    pub fn from_source(
+        language: &str,
+        source: ExternalResourceDefinition,
+        stdin: Option<String>,
+        arguments: Option<Vec<String>>,
+        environment: Option<HashMap<String, String>>,
+    ) -> Self {
         Self {
             language: language.to_string(),
             code: None,
             source: Some(source),
             stdin,
             arguments,
-            environment
-         }
+            environment,
+        }
     }
 }
 
 /// Represents the definition of a shell process
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ShellProcessDefinition{
-    
+pub struct ShellProcessDefinition {
     /// Gets/sets the shell command to run
     #[serde(rename = "command")]
     pub command: String,
@@ -800,22 +781,24 @@ pub struct ShellProcessDefinition{
     /// Gets/sets a key/value mapping of the environment variables, if any, to use when running the configured process
     #[serde(rename = "environment", skip_serializing_if = "Option::is_none")]
     pub environment: Option<HashMap<String, String>>,
-
 }
 impl ShellProcessDefinition {
-    pub fn new(command: &str, arguments: Option<Vec<String>>, environment: Option<HashMap<String, String>>) -> Self{
-        Self { 
-            command: command.to_string(), 
-            arguments, 
-            environment
+    pub fn new(
+        command: &str,
+        arguments: Option<Vec<String>>,
+        environment: Option<HashMap<String, String>>,
+    ) -> Self {
+        Self {
+            command: command.to_string(),
+            arguments,
+            environment,
         }
     }
 }
 
 /// Represents the definition of a (sub)workflow process
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WorkflowProcessDefinition{
-    
+pub struct WorkflowProcessDefinition {
     /// Gets/sets the namespace the workflow to run belongs to
     #[serde(rename = "namespace")]
     pub namespace: String,
@@ -830,16 +813,15 @@ pub struct WorkflowProcessDefinition{
 
     /// Gets/sets the data, if any, to pass as input to the workflow to execute. The value should be validated against the target workflow's input schema, if specified
     #[serde(rename = "input", skip_serializing_if = "Option::is_none")]
-    pub input: Option<Value>
-
+    pub input: Option<Value>,
 }
 impl WorkflowProcessDefinition {
-    pub fn new(namespace: &str, name: &str, version: &str, input: Option<Value>) -> Self{
-        Self { 
-            namespace: namespace.to_string(), 
-            name: name.to_string(), 
-            version: version.to_string(), 
-            input
+    pub fn new(namespace: &str, name: &str, version: &str, input: Option<Value>) -> Self {
+        Self {
+            namespace: namespace.to_string(),
+            name: name.to_string(),
+            version: version.to_string(),
+            input,
         }
     }
 }
@@ -862,16 +844,14 @@ impl Default for SetValue {
 
 /// Represents the definition of a task used to set data
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SetTaskDefinition{
-
+pub struct SetTaskDefinition {
     /// Gets/sets the data to set
     #[serde(rename = "set")]
     pub set: SetValue,
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for SetTaskDefinition {
     fn task_type(&self) -> &str {
@@ -880,26 +860,24 @@ impl TaskDefinitionBase for SetTaskDefinition {
 }
 impl SetTaskDefinition {
     /// Initializes a new SetTaskDefinition
-    pub fn new() -> Self{
+    pub fn new() -> Self {
         Self {
             set: SetValue::Map(HashMap::new()),
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
 }
 
 /// Represents the definition of a task that evaluates conditions and executes specific branches based on the result
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SwitchTaskDefinition{
-
+pub struct SwitchTaskDefinition {
     /// Gets/sets the definition of the switch to use
     #[serde(rename = "switch")]
     pub switch: Map<String, SwitchCaseDefinition>,
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for SwitchTaskDefinition {
     fn task_type(&self) -> &str {
@@ -908,32 +886,29 @@ impl TaskDefinitionBase for SwitchTaskDefinition {
 }
 impl SwitchTaskDefinition {
     /// Initializes a new SwitchTaskDefinition
-    pub fn new() -> Self{
-        Self { 
+    pub fn new() -> Self {
+        Self {
             switch: Map::new(),
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
 }
 
 /// Represents the definition of a case within a switch task, defining a condition and corresponding tasks to execute if the condition is met
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SwitchCaseDefinition{
-
+pub struct SwitchCaseDefinition {
     /// Gets/sets the condition that determines whether or not the case should be executed in a switch task
     #[serde(rename = "when", skip_serializing_if = "Option::is_none")]
     pub when: Option<String>,
 
     /// Gets/sets the transition to perform when the case matches
     #[serde(rename = "then", skip_serializing_if = "Option::is_none")]
-    pub then: Option<String>
-
+    pub then: Option<String>,
 }
 
 /// Represents the definition of a task used to try one or more subtasks, and to catch/handle the errors that can potentially be raised during execution
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TryTaskDefinition{
-
+pub struct TryTaskDefinition {
     /// Gets/sets a name/definition map of the tasks to try running
     #[serde(rename = "try")]
     pub try_: Map<String, TaskDefinition>,
@@ -944,8 +919,7 @@ pub struct TryTaskDefinition{
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for TryTaskDefinition {
     fn task_type(&self) -> &str {
@@ -953,22 +927,19 @@ impl TaskDefinitionBase for TryTaskDefinition {
     }
 }
 impl TryTaskDefinition {
-    
     /// Initializes a new TryTaskDefintion
-    pub fn new(try_: Map<String, TaskDefinition>, catch: ErrorCatcherDefinition) -> Self{
-        Self { 
+    pub fn new(try_: Map<String, TaskDefinition>, catch: ErrorCatcherDefinition) -> Self {
+        Self {
             try_,
             catch,
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
-
 }
 
 /// Represents the configuration of a concept used to catch errors
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ErrorCatcherDefinition{
-
+pub struct ErrorCatcherDefinition {
     /// Gets/sets the definition of the errors to catch
     #[serde(rename = "errors", skip_serializing_if = "Option::is_none")]
     pub errors: Option<ErrorFilterDefinition>,
@@ -991,32 +962,27 @@ pub struct ErrorCatcherDefinition{
 
     /// Gets/sets a name/definition map of the tasks, if any, to run when catching an error
     #[serde(rename = "do", skip_serializing_if = "Option::is_none")]
-    pub do_: Option<Map<String, TaskDefinition>>
-
+    pub do_: Option<Map<String, TaskDefinition>>,
 }
 
 /// Represents the definition an an error filter
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ErrorFilterDefinition{
-
+pub struct ErrorFilterDefinition {
     /// Gets/sets a key/value mapping of the properties errors to filter must define
     #[serde(rename = "with", skip_serializing_if = "Option::is_none")]
-    pub with: Option<HashMap<String, Value>>
-
+    pub with: Option<HashMap<String, Value>>,
 }
 
 /// Represents the definition of a task used to wait a certain amount of time
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WaitTaskDefinition{
-
+pub struct WaitTaskDefinition {
     /// Gets/sets the amount of time to wait before resuming workflow
     #[serde(rename = "wait")]
     pub wait: OneOfDurationOrIso8601Expression,
 
     /// Gets/sets the task's common fields
     #[serde(flatten)]
-    pub common: TaskDefinitionFields
-
+    pub common: TaskDefinitionFields,
 }
 impl TaskDefinitionBase for WaitTaskDefinition {
     fn task_type(&self) -> &str {
@@ -1024,21 +990,18 @@ impl TaskDefinitionBase for WaitTaskDefinition {
     }
 }
 impl WaitTaskDefinition {
-
     /// Initializes a new WaitTaskDefinition
-    pub fn new(wait: OneOfDurationOrIso8601Expression) -> Self{
+    pub fn new(wait: OneOfDurationOrIso8601Expression) -> Self {
         Self {
             wait,
-            common: TaskDefinitionFields::new()
+            common: TaskDefinitionFields::new(),
         }
     }
-
 }
 
 /// Represents the definition of the iterator used to process each event or message consumed by a subscription
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SubscriptionIteratorDefinition{
-
+pub struct SubscriptionIteratorDefinition {
     /// Gets the name of the variable used to store the current item being enumerated
     #[serde(rename = "item")]
     pub item: Option<String>,
@@ -1057,14 +1020,11 @@ pub struct SubscriptionIteratorDefinition{
 
     /// Gets/sets an object, if any, used to customize the content of the workflow context.
     #[serde(rename = "export", skip_serializing_if = "Option::is_none")]
-    pub export: Option<OutputDataModelDefinition>
-
+    pub export: Option<OutputDataModelDefinition>,
 }
-impl SubscriptionIteratorDefinition{
-
+impl SubscriptionIteratorDefinition {
     /// Initializes a new SubscriptionIteratorDefinition
-    pub fn new() -> Self{
+    pub fn new() -> Self {
         SubscriptionIteratorDefinition::default()
     }
-
 }
