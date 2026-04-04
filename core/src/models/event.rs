@@ -6,7 +6,12 @@ use std::collections::HashMap;
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EventConsumptionStrategyDefinition{
 
+    /// Gets/sets the name of the defined strategy to use, if any
+    #[serde(rename = "use", skip_serializing_if = "Option::is_none")]
+    pub use_: Option<String>,
+
     /// Gets/sets a list containing all the events that must be consumed, if any
+
     #[serde(rename = "all", skip_serializing_if = "Option::is_none")]
     pub all: Option<Vec<EventFilterDefinition>>,
 

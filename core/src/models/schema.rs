@@ -22,6 +22,10 @@ impl SchemaFormat {
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SchemaDefinition{
 
+    /// Gets/sets the name of the schema to use, if any
+    #[serde(rename = "use", skip_serializing_if = "Option::is_none")]
+    pub use_: Option<String>,
+
     /// Gets/sets the schema's format. Defaults to 'json'. The (optional) version of the format can be set using `{format}:{version}`.
     #[serde(rename = "format", default = "default_schema_format")]
     pub format : String,

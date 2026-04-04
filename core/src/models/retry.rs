@@ -5,9 +5,14 @@ use crate::models::duration::*;
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RetryPolicyDefinition{
 
+    /// Gets/sets the name of the retry policy to use, if any
+    #[serde(rename = "use", skip_serializing_if = "Option::is_none")]
+    pub use_: Option<String>,
+
     /// Gets/sets a runtime expression used to determine whether or not to retry running the task, in a given context
     #[serde(rename = "when", skip_serializing_if = "Option::is_none")]
     pub when: Option<String>,
+
 
     /// Gets/sets a runtime expression used to determine whether or not to retry running the task, in a given context
     #[serde(rename = "exceptWhen", skip_serializing_if = "Option::is_none")]

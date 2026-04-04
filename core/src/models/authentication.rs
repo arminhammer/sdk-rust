@@ -365,3 +365,13 @@ impl AuthenticationSchemeDefinition for OpenIDConnectSchemeDefinition{
         AuthenticationScheme::OIDC
     }
 }
+
+/// Represents an authentication policy definition or a reference to one
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum OneOfAuthenticationPolicyDefinitionOrReference {
+    /// Inline authentication policy definition
+    Definition(AuthenticationPolicyDefinition),
+    /// Reference to an authentication policy
+    Reference(String),
+}

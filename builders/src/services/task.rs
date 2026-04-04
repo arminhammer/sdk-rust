@@ -257,23 +257,27 @@ impl CalltaskDefinitionBuilder {
     
     /// Initializes a new CallTaskDefinitionBuilder
     pub fn new(function: &str) -> Self{
-        Self { task: CallTaskDefinition::new(function, None, None) }
+        Self { task: CallTaskDefinition::new_function(function, None, None) }
     }
 
     /// Adds a new argument to call the function with
     pub fn with(&mut self, name: &str, value: Value) -> &mut Self{
-        if self.task.with.is_none(){
-            self.task.with = Some(HashMap::new());
-        }
-        if let Some(with) = &mut self.task.with {
-            with.insert(name.to_string(), value);
+        if let CallTaskDefinition::Function(ref mut task) = self.task{
+            if task.with.is_none(){
+                task.with = Some(HashMap::new());
+            }
+            if let Some(with) = &mut task.with {
+                with.insert(name.to_string(), value);
+            }
         }
         self
     }
 
     /// Sets the arguments to call the function with
     pub fn with_arguments(&mut self, arguments: HashMap<String, Value>) -> &mut Self{
-        self.task.with = Some(arguments);
+        if let CallTaskDefinition::Function(ref mut task) = self.task{
+            task.with = Some(arguments);
+        }
         self
     }
   
@@ -282,13 +286,13 @@ impl TaskDefinitionBuilderBase for CalltaskDefinitionBuilder{
 
     /// Configures the task to build to run only if the specified condition matches
     fn if_(&mut self, condition: &str) -> &mut Self{
-        self.task.common.if_ = Some(condition.to_string());
+        self.task.common_mut().if_ = Some(condition.to_string());
         self
     }
 
     /// Sets the task's timeout
     fn with_timeout_reference(&mut self, reference: &str) -> &mut Self{
-        self.task.common.timeout = Some(OneOfTimeoutDefinitionOrReference::Reference(reference.to_string()));
+        self.task.common_mut().timeout = Some(OneOfTimeoutDefinitionOrReference::Reference(reference.to_string()));
         self
     }
 
@@ -298,7 +302,7 @@ impl TaskDefinitionBuilderBase for CalltaskDefinitionBuilder{
         let mut builder = TimeoutDefinitionBuilder::new();
         setup(&mut builder);
         let timeout = builder.build();
-        self.task.common.timeout = Some(OneOfTimeoutDefinitionOrReference::Timeout(timeout));
+        self.task.common_mut().timeout = Some(OneOfTimeoutDefinitionOrReference::Timeout(timeout));
         self
     }
 
@@ -307,7 +311,7 @@ impl TaskDefinitionBuilderBase for CalltaskDefinitionBuilder{
     where F: FnOnce(&mut InputDataModelDefinitionBuilder){
         let mut builder = InputDataModelDefinitionBuilder::new();
         setup(&mut builder);
-        self.task.common.input = Some(builder.build());
+        self.task.common_mut().input = Some(builder.build());
         self
     }
 
@@ -316,7 +320,7 @@ impl TaskDefinitionBuilderBase for CalltaskDefinitionBuilder{
     where F: FnOnce(&mut OutputDataModelDefinitionBuilder){
         let mut builder = OutputDataModelDefinitionBuilder::new();
         setup(&mut builder);
-        self.task.common.output = Some(builder.build());
+        self.task.common_mut().output = Some(builder.build());
         self
     }
 
@@ -325,15 +329,16 @@ impl TaskDefinitionBuilderBase for CalltaskDefinitionBuilder{
     where F: FnOnce(&mut OutputDataModelDefinitionBuilder){
         let mut builder = OutputDataModelDefinitionBuilder::new();
         setup(&mut builder);
-        self.task.common.export = Some(builder.build());
+        self.task.common_mut().export = Some(builder.build());
         self
     }
 
     /// Configures the task to build to then execute the specified flow directive
     fn then(&mut self, directive: &str) -> &mut Self{
-        self.task.common.then = Some(directive.to_string());
+        self.task.common_mut().then = Some(directive.to_string());
         self
     }
+
 
     /// Builds the configures CallTaskDefinition
     fn build(self) -> TaskDefinition{

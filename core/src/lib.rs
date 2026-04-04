@@ -7,6 +7,9 @@ mod unit_tests {
     use crate::models::workflow::*;
     use crate::models::task::*;
     use crate::models::map::*;
+    use crate::models::resource::*;
+    use crate::models::retry::*;
+    use crate::models::authentication::*;
     use serde_json::json;
 
     #[test]
@@ -16,9 +19,11 @@ mod unit_tests {
         let version = "1.0.0";
         let title = Some("fake-title".to_string());
         let summary = Some("fake-summary".to_string());
-        let document = WorkflowDefinitionMetadata::new(namespace, name, version, title.clone(), summary.clone(), None);
-        let mut call_task = CallTaskDefinition::new("http", None, Some(true));
-        call_task.common.then = Some("continue".to_string());
+        let document = WorkflowDefinitionMetadata::new(namespace, name, version, title.clone(), summary.clone(), None, None);
+        let mut call_task = CallTaskDefinition::new_function("http", None, Some(true));
+        if let CallTaskDefinition::Function(ref mut f) = call_task {
+             f.common.then = Some("continue".to_string());
+        }
         let do_task = DoTaskDefinition::new(Map::from(vec![("set".to_string(), TaskDefinition::Wait(WaitTaskDefinition::new(OneOfDurationOrIso8601Expression::Duration(Duration::from_milliseconds(200)))))]));
         let mut workflow = WorkflowDefinition::new(document);
         workflow.do_ = Map::new();
@@ -209,7 +214,7 @@ mod unit_tests {
         let mut do_tasks = Map::new();
         do_tasks.add(
             "task1".to_string(),
-            TaskDefinition::Call(CallTaskDefinition::new("someFunction", None, None)),
+            TaskDefinition::Call(CallTaskDefinition::new_function("someFunction", None, None)),
         );
 
         let for_task = ForTaskDefinition::new(for_loop, do_tasks, None);
@@ -384,8 +389,7 @@ mod unit_tests {
                 "version": "0.1.0"
             },
             "use": {
-                "extensions": [
-                    {
+                "extensions": {
                     "mockService": {
                         "extend": "call",
                         "when": "($task.with.endpoint != null and ($task.with.endpoint | startswith(\"https://mocked.service.com\"))) or ($task.with.endpoint.uri != null and ($task.with.endpoint.uri | startswith(\"https://mocked.service.com\")))",
@@ -409,8 +413,8 @@ mod unit_tests {
                         ]
                     }
                 }
-                ]
             },
+
             "do": [
                 {
                     "callHttp": {

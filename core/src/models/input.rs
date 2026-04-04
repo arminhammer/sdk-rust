@@ -6,6 +6,10 @@ use crate::models::schema::*;
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct InputDataModelDefinition{
 
+    /// Gets/sets the name of the input data model to use, if any
+    #[serde(rename = "use", skip_serializing_if = "Option::is_none")]
+    pub use_: Option<String>,
+
     /// Gets/sets the schema, if any, that defines and describes the input data of a workflow or task
     #[serde(rename = "schema", skip_serializing_if = "Option::is_none")]
     pub schema : Option<SchemaDefinition>,

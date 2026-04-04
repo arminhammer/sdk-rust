@@ -272,7 +272,7 @@ mod unit_tests {
                 .entries
                 .iter()
                 .any(|entry| entry.get(&call_task_name.to_string()).map_or(false, |task| {
-                    if let TaskDefinition::Call(call_task) = task {
+                    if let TaskDefinition::Call(CallTaskDefinition::Function(call_task)) = task {
                         call_task.call == call_function_name && call_task.with == Some(call_task_with.clone())
                     } else {
                         false
@@ -282,6 +282,7 @@ mod unit_tests {
             call_task_name,
             call_function_name,
             call_task_with);
+
         assert!(
             workflow.do_
                 .entries

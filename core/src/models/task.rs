@@ -8,6 +8,7 @@ use crate::models::map::*;
 use crate::models::input::*;
 use crate::models::resource::*;
 use crate::models::retry::*;
+use crate::models::authentication::*;
 
 use super::output::OutputDataModelDefinition;
 use super::timeout::OneOfTimeoutDefinitionOrReference;
@@ -39,6 +40,10 @@ impl TaskType {
     pub const TRY: &'static str = "try";
     /// Gets the type of a 'wait' task
     pub const WAIT: &'static str = "wait";
+    /// Gets the type of a 'mcp' call
+    pub const CALL_MCP: &'static str = "mcp";
+    /// Gets the type of a 'a2a' call
+    pub const CALL_A2A: &'static str = "a2a";
 }
 
 /// Enumerates all supported process types
@@ -233,8 +238,412 @@ impl TaskDefinitionFields{
 }
 
 /// Represents the definition of a task used to call a predefined function
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum CallTaskDefinition{
+    /// AsyncAPI call
+    AsyncApi(Box<CallAsyncApiTaskDefinition>),
+    /// gRPC call
+    Grpc(Box<CallGrpcTaskDefinition>),
+    /// HTTP call
+    Http(Box<CallHttpTaskDefinition>),
+    /// OpenAPI call
+    OpenApi(Box<CallOpenApiTaskDefinition>),
+    /// A2A call
+    A2a(Box<CallA2aTaskDefinition>),
+    /// MCP call
+    Mcp(Box<CallMcpTaskDefinition>),
+    /// Generic function call
+    Function(Box<CallFunctionTaskDefinition>)
+}
+
+// Custom deserializer for CallTaskDefinition to handle both specific and generic calls
+impl<'de> serde::Deserialize<'de> for CallTaskDefinition {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+        let call_val = value.get("call").and_then(|v| v.as_str()).ok_or_else(|| serde::de::Error::custom("missing 'call' field"))?;
+
+        match call_val {
+            "asyncapi" => CallAsyncApiTaskDefinition::deserialize(value).map(|v| CallTaskDefinition::AsyncApi(Box::new(v))).map_err(serde::de::Error::custom),
+            "grpc" => CallGrpcTaskDefinition::deserialize(value).map(|v| CallTaskDefinition::Grpc(Box::new(v))).map_err(serde::de::Error::custom),
+            "http" => CallHttpTaskDefinition::deserialize(value).map(|v| CallTaskDefinition::Http(Box::new(v))).map_err(serde::de::Error::custom),
+            "openapi" => CallOpenApiTaskDefinition::deserialize(value).map(|v| CallTaskDefinition::OpenApi(Box::new(v))).map_err(serde::de::Error::custom),
+            "a2a" => CallA2aTaskDefinition::deserialize(value).map(|v| CallTaskDefinition::A2a(Box::new(v))).map_err(serde::de::Error::custom),
+            "mcp" => CallMcpTaskDefinition::deserialize(value).map(|v| CallTaskDefinition::Mcp(Box::new(v))).map_err(serde::de::Error::custom),
+            _ => CallFunctionTaskDefinition::deserialize(value).map(|v| CallTaskDefinition::Function(Box::new(v))).map_err(serde::de::Error::custom),
+        }
+    }
+}
+
+impl TaskDefinitionBase for CallTaskDefinition {
+    fn task_type(&self) -> &str {
+        TaskType::CALL
+    }
+}
+
+/// Represents the definition of a task used to call an AsyncAPI operation
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CallAsyncApiTaskDefinition {
+    /// The call type (must be 'asyncapi')
+    #[serde(rename = "call")]
+    pub call: String,
+    /// Arguments for the AsyncAPI call
+    #[serde(rename = "with")]
+    pub with: AsyncApiArguments,
+    /// Common task fields
+    #[serde(flatten)]
+    pub common: TaskDefinitionFields
+}
+
+impl Default for CallAsyncApiTaskDefinition {
+    fn default() -> Self {
+        Self { 
+            call: "asyncapi".to_string(), 
+            with: AsyncApiArguments::default(), 
+            common: TaskDefinitionFields::default() 
+        }
+    }
+}
+
+/// Arguments for an AsyncAPI call
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CallTaskDefinition{
+pub struct AsyncApiArguments {
+    /// Document defining the operation
+    #[serde(rename = "document")]
+    pub document: ExternalResourceDefinition,
+    /// Channel name
+    #[serde(rename = "channel", skip_serializing_if = "Option::is_none")]
+    pub channel: Option<String>,
+    /// Operation name/ID
+    #[serde(rename = "operation", skip_serializing_if = "Option::is_none")]
+    pub operation: Option<String>,
+    /// Target server
+    #[serde(rename = "server", skip_serializing_if = "Option::is_none")]
+    pub server: Option<AsyncApiServerDefinition>,
+    /// Protocol to use
+    #[serde(rename = "protocol", skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    /// Message to send
+    #[serde(rename = "message", skip_serializing_if = "Option::is_none")]
+    pub message: Option<Value>,
+    /// Subscription details
+    #[serde(rename = "subscription", skip_serializing_if = "Option::is_none")]
+    pub subscription: Option<Value>,
+    /// Authentication policy
+    #[serde(rename = "authentication", skip_serializing_if = "Option::is_none")]
+    pub authentication: Option<OneOfAuthenticationPolicyDefinitionOrReference>
+}
+
+/// Configuration for AsyncAPI server
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AsyncApiServerDefinition {
+    /// Server URL
+    #[serde(rename = "url")]
+    pub url: String,
+    /// Environment/variables
+    #[serde(rename = "variables", skip_serializing_if = "Option::is_none")]
+    pub variables: Option<HashMap<String, String>>,
+}
+
+/// Represents the definition of a task used to call a gRPC service
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CallGrpcTaskDefinition {
+    /// The call type (must be 'grpc')
+    #[serde(rename = "call")]
+    pub call: String,
+    /// Arguments for the gRPC call
+    #[serde(rename = "with")]
+    pub with: GrpcArguments,
+    /// Common task fields
+    #[serde(flatten)]
+    pub common: TaskDefinitionFields
+}
+
+impl Default for CallGrpcTaskDefinition {
+    fn default() -> Self {
+        Self { 
+            call: "grpc".to_string(), 
+            with: GrpcArguments::default(), 
+            common: TaskDefinitionFields::default() 
+        }
+    }
+}
+
+/// Arguments for a gRPC call
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GrpcArguments {
+    /// Proto resource
+    #[serde(rename = "proto")]
+    pub proto: ExternalResourceDefinition,
+    /// Service definition
+    #[serde(rename = "service")]
+    pub service: GrpcServiceDefinition,
+    /// Method name
+    #[serde(rename = "method")]
+    pub method: String,
+    /// Arguments
+    #[serde(rename = "arguments", skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<HashMap<String, Value>>
+}
+
+/// Definition of a gRPC service
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GrpcServiceDefinition {
+    /// Service name
+    #[serde(rename = "name")]
+    pub name: String,
+    /// Service host
+    #[serde(rename = "host")]
+    pub host: String,
+    /// Service port
+    #[serde(rename = "port", skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+    /// Authentication policy
+    #[serde(rename = "authentication", skip_serializing_if = "Option::is_none")]
+    pub authentication: Option<OneOfAuthenticationPolicyDefinitionOrReference>
+}
+
+/// Represents the definition of a task used to perform an HTTP request
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CallHttpTaskDefinition {
+    /// The call type (must be 'http')
+    #[serde(rename = "call")]
+    pub call: String,
+    /// Arguments for the HTTP call
+    #[serde(rename = "with")]
+    pub with: HttpArguments,
+    /// Common task fields
+    #[serde(flatten)]
+    pub common: TaskDefinitionFields
+}
+
+impl Default for CallHttpTaskDefinition {
+    fn default() -> Self {
+        Self { 
+            call: "http".to_string(), 
+            with: HttpArguments::default(), 
+            common: TaskDefinitionFields::default() 
+        }
+    }
+}
+
+/// Arguments for an HTTP call
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HttpArguments {
+    /// HTTP method
+    #[serde(rename = "method")]
+    pub method: String,
+    /// Target endpoint
+    #[serde(rename = "endpoint")]
+    pub endpoint: OneOfEndpointDefinitionOrUri,
+    /// Request headers
+    #[serde(rename = "headers", skip_serializing_if = "Option::is_none")]
+    pub headers: Option<HashMap<String, String>>,
+    /// Request body
+    #[serde(rename = "body", skip_serializing_if = "Option::is_none")]
+    pub body: Option<Value>,
+    /// Query parameters
+    #[serde(rename = "query", skip_serializing_if = "Option::is_none")]
+    pub query: Option<HashMap<String, String>>,
+    /// Desired output format
+    #[serde(rename = "output", skip_serializing_if = "Option::is_none")]
+    pub output: Option<String>,
+    /// Redirection strategy
+    #[serde(rename = "redirect", skip_serializing_if = "Option::is_none")]
+    pub redirect: Option<bool>
+}
+
+/// Represents the definition of a task used to call an OpenAPI operation
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CallOpenApiTaskDefinition {
+    /// The call type (must be 'openapi')
+    #[serde(rename = "call")]
+    pub call: String,
+    /// Arguments for the OpenAPI call
+    #[serde(rename = "with")]
+    pub with: OpenApiArguments,
+    /// Common task fields
+    #[serde(flatten)]
+    pub common: TaskDefinitionFields
+}
+
+impl Default for CallOpenApiTaskDefinition {
+    fn default() -> Self {
+        Self { 
+            call: "openapi".to_string(), 
+            with: OpenApiArguments::default(), 
+            common: TaskDefinitionFields::default() 
+        }
+    }
+}
+
+/// Arguments for an OpenAPI call
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OpenApiArguments {
+    /// OpenAPI document
+    #[serde(rename = "document")]
+    pub document: ExternalResourceDefinition,
+    /// Operation ID to call
+    #[serde(rename = "operationId")]
+    pub operation_id: String,
+    /// Parameters mapping
+    #[serde(rename = "parameters", skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<HashMap<String, Value>>,
+    /// Authentication policy
+    #[serde(rename = "authentication", skip_serializing_if = "Option::is_none")]
+    pub authentication: Option<OneOfAuthenticationPolicyDefinitionOrReference>,
+    /// Desired output format
+    #[serde(rename = "output", skip_serializing_if = "Option::is_none")]
+    pub output: Option<String>,
+    /// Redirection strategy
+    #[serde(rename = "redirect", skip_serializing_if = "Option::is_none")]
+    pub redirect: Option<bool>
+}
+
+/// Represents the definition of a task used to call an Agent-to-Agent operation
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CallA2aTaskDefinition {
+    /// The call type (must be 'a2a')
+    #[serde(rename = "call")]
+    pub call: String,
+    /// Arguments for the A2A call
+    #[serde(rename = "with")]
+    pub with: A2aArguments,
+    /// Common task fields
+    #[serde(flatten)]
+    pub common: TaskDefinitionFields
+}
+
+impl Default for CallA2aTaskDefinition {
+    fn default() -> Self {
+        Self { 
+            call: "a2a".to_string(), 
+            with: A2aArguments::default(), 
+            common: TaskDefinitionFields::default() 
+        }
+    }
+}
+
+/// Arguments for an A2A call
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct A2aArguments {
+    /// Agent card reference
+    #[serde(rename = "agentCard", skip_serializing_if = "Option::is_none")]
+    pub agent_card: Option<ExternalResourceDefinition>,
+    /// Server endpoint
+    #[serde(rename = "server", skip_serializing_if = "Option::is_none")]
+    pub server: Option<OneOfEndpointDefinitionOrUri>,
+    /// Method to call
+    #[serde(rename = "method")]
+    pub method: String,
+    /// Parameters for the method
+    #[serde(rename = "parameters", skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<Value>
+}
+
+/// Represents the definition of a task used to perform an MCP call
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CallMcpTaskDefinition {
+    /// The call type (must be 'mcp')
+    #[serde(rename = "call")]
+    pub call: String,
+    /// Arguments for the MCP call
+    #[serde(rename = "with")]
+    pub with: McpArguments,
+    /// Common task fields
+    #[serde(flatten)]
+    pub common: TaskDefinitionFields
+}
+
+impl Default for CallMcpTaskDefinition {
+    fn default() -> Self {
+        Self { 
+            call: "mcp".to_string(), 
+            with: McpArguments::default(), 
+            common: TaskDefinitionFields::default() 
+        }
+    }
+}
+
+/// Arguments for an MCP call
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct McpArguments {
+    /// Protocol version
+    #[serde(rename = "protocolVersion", skip_serializing_if = "Option::is_none")]
+    pub protocol_version: Option<String>,
+    /// MCP method
+    #[serde(rename = "method")]
+    pub method: String,
+    /// Method parameters
+    #[serde(rename = "parameters", skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<Value>,
+    /// Call transport configuration
+    #[serde(rename = "transport")]
+    pub transport: McpTransportDefinition,
+    /// Client identification
+    #[serde(rename = "client", skip_serializing_if = "Option::is_none")]
+    pub client: Option<McpClientDefinition>
+}
+
+/// Configuration for MCP transport
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum McpTransportDefinition {
+    /// HTTP transport
+    #[serde(rename = "http")]
+    Http(McpHttpTransportDefinition),
+    /// Stdio transport
+    #[serde(rename = "stdio")]
+    Stdio(McpStdioTransportDefinition)
+}
+
+impl Default for McpTransportDefinition {
+    fn default() -> Self {
+        McpTransportDefinition::Http(McpHttpTransportDefinition::default())
+    }
+}
+
+/// HTTP transport for MCP
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct McpHttpTransportDefinition {
+    /// HTTP endpoint
+    #[serde(rename = "endpoint")]
+    pub endpoint: OneOfEndpointDefinitionOrUri,
+    /// Custom headers
+    #[serde(rename = "headers", skip_serializing_if = "Option::is_none")]
+    pub headers: Option<HashMap<String, String>>
+}
+
+/// Stdio transport for MCP
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct McpStdioTransportDefinition {
+    /// Command to execute
+    #[serde(rename = "command")]
+    pub command: String,
+    /// Command arguments
+    #[serde(rename = "arguments", skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<Vec<String>>,
+    /// Environment variables
+    #[serde(rename = "environment", skip_serializing_if = "Option::is_none")]
+    pub environment: Option<HashMap<String, String>>
+}
+
+/// Client definition for MCP
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct McpClientDefinition {
+    /// Client name
+    #[serde(rename = "name")]
+    pub name: String,
+    /// Client version
+    #[serde(rename = "version")]
+    pub version: String
+}
+
+/// Represents the definition of a generic task used to call a function
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CallFunctionTaskDefinition{
 
     /// Gets/sets the reference to the function to call
     #[serde(rename = "call")]
@@ -253,24 +662,47 @@ pub struct CallTaskDefinition{
     pub common: TaskDefinitionFields
 
 }
-impl TaskDefinitionBase for CallTaskDefinition {
-    fn task_type(&self) -> &str {
-        TaskType::CALL
+
+impl CallTaskDefinition {
+
+    /// Gets the task's common fields
+    pub fn common(&self) -> &TaskDefinitionFields {
+        match self {
+            Self::AsyncApi(v) => &v.common,
+            Self::Grpc(v) => &v.common,
+            Self::Http(v) => &v.common,
+            Self::OpenApi(v) => &v.common,
+            Self::A2a(v) => &v.common,
+            Self::Mcp(v) => &v.common,
+            Self::Function(v) => &v.common,
+        }
     }
-}
-impl  CallTaskDefinition {
-    
+
+    /// Gets the task's common fields mutably
+    pub fn common_mut(&mut self) -> &mut TaskDefinitionFields {
+        match self {
+            Self::AsyncApi(v) => &mut v.common,
+            Self::Grpc(v) => &mut v.common,
+            Self::Http(v) => &mut v.common,
+            Self::OpenApi(v) => &mut v.common,
+            Self::A2a(v) => &mut v.common,
+            Self::Mcp(v) => &mut v.common,
+            Self::Function(v) => &mut v.common,
+        }
+    }
+
     /// Initializes a new CalltaskDefinition
-    pub fn new(call: &str, with: Option<HashMap<String, Value>>, await_: Option<bool>) -> Self{
-        Self { 
+    pub fn new_function(call: &str, with: Option<HashMap<String, Value>>, await_: Option<bool>) -> Self{
+        CallTaskDefinition::Function(Box::new(CallFunctionTaskDefinition { 
             call: call.to_string(), 
             with, 
             await_,
             common: TaskDefinitionFields::new()
-        }
+        }))
     }
 
 }
+
 
 /// Represents the configuration of a task that is composed of multiple subtasks to run sequentially
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -620,16 +1052,21 @@ pub struct ProcessTypeDefinition{
 
     /// Gets/sets a boolean indicating whether or not to await the process completion before continuing. Defaults to 'true'
     #[serde(rename = "await", skip_serializing_if = "Option::is_none")]
-    pub await_: Option<bool>
+    pub await_: Option<bool>,
+
+    /// Gets/sets the configuration of the process output. Defaults to 'stdout'
+    #[serde(rename = "return", skip_serializing_if = "Option::is_none")]
+    pub return_: Option<String>
 
 }
 impl ProcessTypeDefinition {
 
     /// Creates a new container process
-    pub fn using_container(container: ContainerProcessDefinition, await_: Option<bool>) -> Self{
+    pub fn using_container(container: ContainerProcessDefinition, await_: Option<bool>, return_: Option<String>) -> Self{
         Self { 
             container: Some(container),
             await_,
+            return_,
             shell: None,
             script: None,
             workflow: None
@@ -637,10 +1074,11 @@ impl ProcessTypeDefinition {
     }
 
     /// Creates a new script process
-    pub fn using_script(script: ScriptProcessDefinition, await_: Option<bool>) -> Self{
+    pub fn using_script(script: ScriptProcessDefinition, await_: Option<bool>, return_: Option<String>) -> Self{
         Self { 
             script: Some(script),
             await_,
+            return_,
             container: None,
             shell: None,
             workflow: None
@@ -648,10 +1086,11 @@ impl ProcessTypeDefinition {
     }
 
     /// Creates a new shell process
-    pub fn using_shell(shell: ShellProcessDefinition, await_: Option<bool>) -> Self{
+    pub fn using_shell(shell: ShellProcessDefinition, await_: Option<bool>, return_: Option<String>) -> Self{
         Self { 
             shell: Some(shell),
             await_,
+            return_,
             container: None,
             script: None,
             workflow: None
@@ -659,10 +1098,11 @@ impl ProcessTypeDefinition {
     }
 
     /// Creates a new workflow process
-    pub fn using_workflow(workflow: WorkflowProcessDefinition, await_: Option<bool>) -> Self{
+    pub fn using_workflow(workflow: WorkflowProcessDefinition, await_: Option<bool>, return_: Option<String>) -> Self{
         Self { 
             workflow: Some(workflow),
             await_,
+            return_,
             container: None,
             shell: None,
             script: None

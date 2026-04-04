@@ -5,9 +5,14 @@ use serde_json::Value;
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ErrorDefinition{
 
+    /// Gets/sets the name of the error to use, if any
+    #[serde(rename = "use", skip_serializing_if = "Option::is_none")]
+    pub use_: Option<String>,
+
     /// Gets/sets an uri that reference the type of the described error
     #[serde(rename = "type")]
     pub type_: String,
+
 
     /// Gets/sets a short, human-readable summary of the error type.It SHOULD NOT change from occurrence to occurrence of the error, except for purposes of localization
     #[serde(rename = "title")]
@@ -31,6 +36,7 @@ impl ErrorDefinition{
     /// Initializes a new ErrorDefinition
     pub fn new(type_: &str, title: &str, status: Value, detail: Option<String>, instance: Option<String>) -> Self{
         Self { 
+            use_: None,
             type_: type_.to_string(), 
             title: title.to_string(),
             status, 

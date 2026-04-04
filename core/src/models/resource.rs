@@ -5,6 +5,10 @@ use crate::models::authentication::*;
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ExternalResourceDefinition{
 
+    /// Gets/sets the name of the external resource to use, if any
+    #[serde(rename = "use", skip_serializing_if = "Option::is_none")]
+    pub use_: Option<String>,
+
     /// Gets/sets the external resource's name, if any
     #[serde(rename = "name", skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -14,6 +18,7 @@ pub struct ExternalResourceDefinition{
     pub endpoint: OneOfEndpointDefinitionOrUri
 
 }
+
 
 /// Represents the definition of an endpoint
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]

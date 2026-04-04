@@ -5,11 +5,16 @@ use crate::models::duration::*;
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TimeoutDefinition{
 
+    /// Gets/sets the name of the timeout to use, if any
+    #[serde(rename = "use", skip_serializing_if = "Option::is_none")]
+    pub use_: Option<String>,
+
     /// Gets/sets the duration after which to timeout
     #[serde(rename = "after")]
     pub after : OneOfDurationOrIso8601Expression
 
 }
+
 
 /// Represents a value that can be either a TimeoutDefinition or a reference to a TimeoutDefinition
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

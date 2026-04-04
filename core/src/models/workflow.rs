@@ -22,7 +22,7 @@ fn default_namespace() -> String {
 }
 
 /// Gets the latest ServerlessWorkflow DSL version to use by default for workflow definitions
-pub const LATEST_DSL_VERSION: &str = "1.0.0";
+pub const LATEST_DSL_VERSION: &str = "1.0.3";
 // Provides the latest ServerlessWorkflow DSL version
 fn default_dsl_version() -> String {
     LATEST_DSL_VERSION.to_string()
@@ -78,10 +78,6 @@ pub struct WorkflowDefinition{
     #[serde(rename = "do")]
     pub do_: Map<String, TaskDefinition>,
 
-    /// Gets/sets a key/value mapping, if any, of additional information associated with the workflow
-    #[serde(rename = "metadata", skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<HashMap<String, Value>>
-
 }
 impl WorkflowDefinition {
 
@@ -95,8 +91,7 @@ impl WorkflowDefinition {
             output: None,
             schedule: None,
             evaluate: None,
-            do_: Map::new(),
-            metadata: None
+            do_: Map::new()
         }
     }
     
@@ -134,12 +129,16 @@ pub struct WorkflowDefinitionMetadata {
 
     /// Gets/sets a key/value mapping of the workflow's tags, if any
     #[serde(rename = "tags", skip_serializing_if = "Option::is_none")]
-    pub tags: Option<HashMap<String, String>>
+    pub tags: Option<HashMap<String, String>>,
+
+    /// Gets/sets a key/value mapping, if any, of additional information associated with the workflow
+    #[serde(rename = "metadata", skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<HashMap<String, Value>>
 }
 impl WorkflowDefinitionMetadata{
 
     // Initializes a new workflow definition metadata
-    pub fn new(namespace : &str, name: &str, version : &str, title: Option<String>, summary : Option<String>, tags: Option<HashMap<String, String>>) -> Self {
+    pub fn new(namespace : &str, name: &str, version : &str, title: Option<String>, summary : Option<String>, tags: Option<HashMap<String, String>>, metadata: Option<HashMap<String, Value>>) -> Self {
         Self { 
             dsl: default_dsl_version(),
             namespace: namespace.to_owned(),
@@ -147,7 +146,8 @@ impl WorkflowDefinitionMetadata{
             version: version.to_owned(),
             title,
             summary,
-            tags
+            tags,
+            metadata
         }
     }
 
@@ -157,9 +157,14 @@ impl WorkflowDefinitionMetadata{
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorkflowScheduleDefinition{
 
+    /// Gets/sets the name of the schedule to use, if any
+    #[serde(rename = "use", skip_serializing_if = "Option::is_none")]
+    pub use_: Option<String>,
+
     /// Gets/sets an object used to document the defined workflow
     #[serde(rename = "every", skip_serializing_if = "Option::is_none")]
     pub every: Option<Duration>,
+
 
     /// Gets/sets the schedule using a CRON expression, e.g., '0 0 * * *' for daily at midnight.
     #[serde(rename = "cron", skip_serializing_if = "Option::is_none")]
@@ -207,7 +212,8 @@ pub struct ComponentDefinitionCollection{
 
     /// Gets/sets a list containing the workflow's extensions, if any
     #[serde(rename = "extensions", skip_serializing_if = "Option::is_none")]
-    pub extensions: Option<Vec<HashMap<String, ExtensionDefinition>>>,
+    pub extensions: Option<HashMap<String, ExtensionDefinition>>,
+
 
     /// Gets/sets a name/value mapping of the workflow's reusable functions
     #[serde(rename = "functions", skip_serializing_if = "Option::is_none")]
