@@ -159,7 +159,7 @@ pub struct WorkflowScheduleDefinition{
 
     /// Gets/sets an object used to document the defined workflow
     #[serde(rename = "every", skip_serializing_if = "Option::is_none")]
-    pub every: Option<Duration>,
+    pub every: Option<OneOfDurationOrIso8601Expression>,
 
     /// Gets/sets the schedule using a CRON expression, e.g., '0 0 * * *' for daily at midnight.
     #[serde(rename = "cron", skip_serializing_if = "Option::is_none")]
@@ -167,7 +167,7 @@ pub struct WorkflowScheduleDefinition{
 
     /// Gets/sets a delay duration, if any, that the workflow must wait before starting again after it completes. In other words, when this workflow completes, it should run again after the specified amount of time.
     #[serde(rename = "after", skip_serializing_if = "Option::is_none")]
-    pub after: Option<Duration>,
+    pub after: Option<OneOfDurationOrIso8601Expression>,
 
     /// Gets/sets the events that trigger the workflow execution
     #[serde(rename = "on", skip_serializing_if = "Option::is_none")]
