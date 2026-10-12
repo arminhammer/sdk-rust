@@ -528,7 +528,13 @@ impl ForTaskDefinitionBuilder{
 
     /// Sets the runtime expression used to resolve the collection to iterate
     pub fn in_(&mut self, expression: &str) -> &mut Self{
-        self.task.for_.in_ = expression.to_string();
+        self.task.for_.in_ = Value::String(expression.to_string());
+        self
+    }
+
+    /// Sets an inline array as the collection to iterate
+    pub fn in_inline(&mut self, items: Vec<Value>) -> &mut Self{
+        self.task.for_.in_ = Value::Array(items);
         self
     }
 
@@ -1840,20 +1846,24 @@ impl ScriptProcessDefinitionBuilder{
         self
     }
 
-    /// Adds a new argument to execute the script with
+    /// Adds a new positional argument to execute the script with
     pub fn with_argument(&mut self, value: &str) -> &mut Self{
-        if self.process.arguments.is_none(){
-            self.process.arguments = Some(Vec::new());
-        }
-        if let Some(arguments) = &mut self.process.arguments {
-            arguments.push(value.to_string());
+        match &mut self.process.arguments {
+            Some(ScriptArguments::List(arguments)) => arguments.push(value.to_string()),
+            _ => self.process.arguments = Some(ScriptArguments::List(vec![value.to_string()])),
         }
         self
     }
 
-    /// Sets the arguments of the script to execute
+    /// Sets the positional arguments of the script to execute
     pub fn with_arguments(&mut self, arguments: Vec<String>) -> &mut Self{
-        self.process.arguments = Some(arguments);
+        self.process.arguments = Some(ScriptArguments::List(arguments));
+        self
+    }
+
+    /// Sets the named arguments of the script to execute
+    pub fn with_named_arguments(&mut self, arguments: HashMap<String, Value>) -> &mut Self{
+        self.process.arguments = Some(ScriptArguments::Map(arguments));
         self
     }
 
@@ -1902,6 +1912,18 @@ impl ShellProcessDefinitionBuilder{
     /// Configures the task to execute the specified shell command
     pub fn with_command(&mut self, command: &str) -> &mut Self{
         self.process.command = command.to_string();
+        self
+    }
+
+    /// Sets the runtime expression to pass to the shell command as standard input
+    pub fn with_stdin(&mut self, stdin: &str) -> &mut Self{
+        self.process.stdin = Some(stdin.to_string());
+        self
+    }
+
+    /// Sets the working directory in which to run the shell command
+    pub fn with_directory(&mut self, directory: &str) -> &mut Self{
+        self.process.directory = Some(directory.to_string());
         self
     }
 
