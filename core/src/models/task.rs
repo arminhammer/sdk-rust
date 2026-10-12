@@ -340,9 +340,9 @@ pub struct AsyncApiArguments {
 /// Configuration for AsyncAPI server
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AsyncApiServerDefinition {
-    /// Server URL
-    #[serde(rename = "url")]
-    pub url: String,
+    /// Name of the target server
+    #[serde(rename = "name")]
+    pub name: String,
     /// Environment/variables
     #[serde(rename = "variables", skip_serializing_if = "Option::is_none")]
     pub variables: Option<HashMap<String, String>>,
@@ -430,6 +430,16 @@ impl Default for CallHttpTaskDefinition {
     }
 }
 
+/// Represents a name/value string mapping, or a runtime expression that evaluates to one
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum OneOfStringMapOrRuntimeExpression {
+    /// A name/value mapping
+    Map(HashMap<String, String>),
+    /// A runtime expression
+    RuntimeExpression(String),
+}
+
 /// Arguments for an HTTP call
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HttpArguments {
@@ -441,13 +451,13 @@ pub struct HttpArguments {
     pub endpoint: OneOfEndpointDefinitionOrUri,
     /// Request headers
     #[serde(rename = "headers", skip_serializing_if = "Option::is_none")]
-    pub headers: Option<HashMap<String, String>>,
+    pub headers: Option<OneOfStringMapOrRuntimeExpression>,
     /// Request body
     #[serde(rename = "body", skip_serializing_if = "Option::is_none")]
     pub body: Option<Value>,
     /// Query parameters
     #[serde(rename = "query", skip_serializing_if = "Option::is_none")]
-    pub query: Option<HashMap<String, String>>,
+    pub query: Option<OneOfStringMapOrRuntimeExpression>,
     /// Desired output format
     #[serde(rename = "output", skip_serializing_if = "Option::is_none")]
     pub output: Option<String>,
@@ -827,9 +837,9 @@ pub struct ForLoopDefinition{
     #[serde(rename = "each")]
     pub each: String,
 
-    /// Gets/sets the runtime expression used to get the collection to iterate over
+    /// Gets/sets the collection to iterate over: a runtime expression (JSON string) or an inline array
     #[serde(rename = "in")]
-    pub in_: String,
+    pub in_: Value,
 
     /// Gets/sets the name of the variable used to hold the index of each element in the collection during iteration
     #[serde(rename = "at", skip_serializing_if = "Option::is_none")]
@@ -844,9 +854,19 @@ impl ForLoopDefinition {
     pub fn new(each: &str, in_: &str, at: Option<String>, input: Option<InputDataModelDefinition>) -> Self{
         Self { 
             each: each.to_string(), 
-            in_: in_.to_string(), 
-            at, 
-            input 
+            in_: Value::String(in_.to_string()),
+            at,
+            input
+        }
+    }
+
+    /// Initializes a new ForLoopDefinition that iterates over an inline array
+    pub fn new_inline(each: &str, items: Vec<Value>, at: Option<String>, input: Option<InputDataModelDefinition>) -> Self{
+        Self {
+            each: each.to_string(),
+            in_: Value::Array(items),
+            at,
+            input
         }
     }
 }
@@ -1198,19 +1218,30 @@ pub struct ScriptProcessDefinition{
     #[serde(rename = "stdin", skip_serializing_if = "Option::is_none")]
     pub stdin: Option<String>,
 
-    /// Gets/sets a list of arguments, if any, to pass to the script (argv)
+    /// Gets/sets the arguments, if any, to pass to the script
     #[serde(rename = "arguments", skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<Vec<String>>,
+    pub arguments: Option<ScriptArguments>,
 
     /// Gets/sets a key/value mapping of the environment variables, if any, to use when running the configured process
     #[serde(rename = "environment", skip_serializing_if = "Option::is_none")]
     pub environment: Option<HashMap<String, String>>,
 
 }
+
+/// Represents the arguments of a script: a key/value mapping (DSL 1.0.3), or a positional list (earlier DSL versions)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ScriptArguments {
+    /// A key/value mapping of named arguments
+    Map(HashMap<String, Value>),
+    /// A list of positional arguments (argv)
+    List(Vec<String>),
+}
+
 impl ScriptProcessDefinition {
 
     /// Initializes a new script from code
-    pub fn from_code(language: &str, code: String, stdin: Option<String>, arguments: Option<Vec<String>>, environment: Option<HashMap<String, String>>) -> Self{
+    pub fn from_code(language: &str, code: String, stdin: Option<String>, arguments: Option<ScriptArguments>, environment: Option<HashMap<String, String>>) -> Self{
         Self {
             language: language.to_string(),
             code: Some(code),
@@ -1222,7 +1253,7 @@ impl ScriptProcessDefinition {
     }
 
     /// Initializes a new script from an external resource
-    pub fn from_source(language: &str, source: ExternalResourceDefinition, stdin: Option<String>, arguments: Option<Vec<String>>, environment: Option<HashMap<String, String>>) -> Self{
+    pub fn from_source(language: &str, source: ExternalResourceDefinition, stdin: Option<String>, arguments: Option<ScriptArguments>, environment: Option<HashMap<String, String>>) -> Self{
         Self {
             language: language.to_string(),
             code: None,
@@ -1242,9 +1273,17 @@ pub struct ShellProcessDefinition{
     #[serde(rename = "command")]
     pub command: String,
 
+    /// Gets/sets a runtime expression, if any, to pass to the shell command as standard input (stdin)
+    #[serde(rename = "stdin", skip_serializing_if = "Option::is_none")]
+    pub stdin: Option<String>,
+
     /// Gets/sets the arguments of the shell command to run
     #[serde(rename = "arguments", skip_serializing_if = "Option::is_none")]
     pub arguments: Option<Vec<String>>,
+
+    /// Gets/sets the working directory, if any, in which to run the shell command
+    #[serde(rename = "directory", skip_serializing_if = "Option::is_none")]
+    pub directory: Option<String>,
 
     /// Gets/sets a key/value mapping of the environment variables, if any, to use when running the configured process
     #[serde(rename = "environment", skip_serializing_if = "Option::is_none")]
@@ -1253,9 +1292,11 @@ pub struct ShellProcessDefinition{
 }
 impl ShellProcessDefinition {
     pub fn new(command: &str, arguments: Option<Vec<String>>, environment: Option<HashMap<String, String>>) -> Self{
-        Self { 
-            command: command.to_string(), 
-            arguments, 
+        Self {
+            command: command.to_string(),
+            stdin: None,
+            arguments,
+            directory: None,
             environment
         }
     }

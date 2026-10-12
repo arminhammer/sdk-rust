@@ -349,10 +349,89 @@ mod unit_tests {
         assert_eq!(script.language, "javascript");
         assert!(script.arguments.is_some());
 
-        let args = script.arguments.unwrap();
-        assert_eq!(args.len(), 2);
-        assert_eq!(args[0], "hello");
-        assert_eq!(args[1], "world");
+        assert_eq!(
+            script.arguments.unwrap(),
+            crate::models::task::ScriptArguments::List(vec!["hello".to_string(), "world".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_script_process_arguments_map_deserialization() {
+        use crate::models::task::{ScriptArguments, ScriptProcessDefinition};
+
+        // DSL 1.0.3: script arguments are a key/value mapping
+        let script: ScriptProcessDefinition = serde_json::from_value(json!({
+            "language": "js",
+            "code": "console.log(message)",
+            "arguments": { "message": "${ .message }" }
+        })).expect("script with map arguments should deserialize");
+
+        match script.arguments {
+            Some(ScriptArguments::Map(args)) => {
+                assert_eq!(args.get("message"), Some(&json!("${ .message }")));
+            }
+            other => panic!("Expected map arguments, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_shell_process_stdin_and_directory_deserialization() {
+        use crate::models::task::ShellProcessDefinition;
+
+        let shell: ShellProcessDefinition = serde_json::from_value(json!({
+            "command": "cat",
+            "stdin": "${ . }",
+            "arguments": ["Foo", "Bar"],
+            "directory": "/tmp"
+        })).expect("shell process should deserialize");
+
+        assert_eq!(shell.stdin, Some("${ . }".to_string()));
+        assert_eq!(shell.directory, Some("/tmp".to_string()));
+        assert_eq!(shell.arguments, Some(vec!["Foo".to_string(), "Bar".to_string()]));
+    }
+
+    #[test]
+    fn test_for_loop_in_accepts_expression_and_inline_array() {
+        use crate::models::task::ForLoopDefinition;
+
+        let expression: ForLoopDefinition = serde_json::from_value(json!({
+            "each": "item", "in": ".items"
+        })).expect("expression 'in' should deserialize");
+        assert_eq!(expression.in_, json!(".items"));
+
+        let inline: ForLoopDefinition = serde_json::from_value(json!({
+            "each": "color",
+            "in": [{ "name": "red" }, { "name": "green" }]
+        })).expect("inline array 'in' should deserialize");
+        assert_eq!(inline.in_, json!([{ "name": "red" }, { "name": "green" }]));
+    }
+
+    #[test]
+    fn test_http_headers_and_query_accept_runtime_expression() {
+        use crate::models::task::{HttpArguments, OneOfStringMapOrRuntimeExpression};
+
+        let http: HttpArguments = serde_json::from_value(json!({
+            "method": "get",
+            "endpoint": "https://swapi.dev/api/people/",
+            "headers": "${.headers}",
+            "query": { "search": "luke" }
+        })).expect("http arguments should deserialize");
+
+        assert_eq!(
+            http.headers,
+            Some(OneOfStringMapOrRuntimeExpression::RuntimeExpression("${.headers}".to_string()))
+        );
+        assert!(matches!(http.query, Some(OneOfStringMapOrRuntimeExpression::Map(_))));
+    }
+
+    #[test]
+    fn test_asyncapi_server_is_identified_by_name() {
+        use crate::models::task::AsyncApiServerDefinition;
+
+        let server: AsyncApiServerDefinition = serde_json::from_value(json!({ "name": "staging" }))
+            .expect("asyncapi server with only a name should deserialize");
+        assert_eq!(server.name, "staging");
+        assert!(server.variables.is_none());
     }
 
     #[test]
@@ -374,7 +453,10 @@ mod unit_tests {
         assert_eq!(script.language, "python");
         assert_eq!(script.stdin, Some("Hello Workflow".to_string()));
         assert!(script.arguments.is_some());
-        assert_eq!(script.arguments.as_ref().unwrap().len(), 1);
+        assert_eq!(
+            script.arguments,
+            Some(crate::models::task::ScriptArguments::List(vec!["arg1".to_string()]))
+        );
         assert!(script.environment.is_some());
         assert_eq!(script.environment.as_ref().unwrap().get("FOO"), Some(&"bar".to_string()));
     }
@@ -389,7 +471,7 @@ mod unit_tests {
                 "version": "0.1.0"
             },
             "use": {
-                "extensions": {
+                "extensions": [{
                     "mockService": {
                         "extend": "call",
                         "when": "($task.with.endpoint != null and ($task.with.endpoint | startswith(\"https://mocked.service.com\"))) or ($task.with.endpoint.uri != null and ($task.with.endpoint.uri | startswith(\"https://mocked.service.com\")))",
@@ -412,7 +494,7 @@ mod unit_tests {
                             }
                         ]
                     }
-                }
+                }]
             },
 
             "do": [
